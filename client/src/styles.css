@@ -286,6 +286,59 @@ body {
   cursor: not-allowed;
 }
 
+.hitmarker {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  animation: hitmarkerPop 120ms ease;
+}
+
+.hitmarker-line {
+  position: absolute;
+  width: 12px;
+  height: 3px;
+  background: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.35);
+}
+
+.hitmarker-line-a {
+  top: 6px;
+  left: 2px;
+  transform: rotate(45deg);
+}
+
+.hitmarker-line-b {
+  top: 6px;
+  right: 2px;
+  transform: rotate(-45deg);
+}
+
+.hitmarker-line-c {
+  bottom: 6px;
+  left: 2px;
+  transform: rotate(-45deg);
+}
+
+.hitmarker-line-d {
+  bottom: 6px;
+  right: 2px;
+  transform: rotate(45deg);
+}
+
+.damage-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 70, 70, 0.2);
+  border-radius: 14px;
+  pointer-events: none;
+  animation: damageFlash 180ms ease-out;
+}
+
 @keyframes killfeedIn {
   from {
     opacity: 0;
@@ -294,5 +347,25 @@ body {
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes hitmarkerPop {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes damageFlash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }

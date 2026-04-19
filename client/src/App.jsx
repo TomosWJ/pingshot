@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./styles.css";
 
 import { HEIGHT, WIDTH } from "./game/constants";
@@ -22,6 +22,7 @@ export default function App() {
     playersRef,
     bulletsRef,
     killFeed,
+    recentHits,
     myId,
     me,
     connected,
@@ -45,6 +46,32 @@ export default function App() {
     myId,
   });
 
+  const [hitMarkerActive, setHitMarkerActive] = useState(false);
+  const [damageFlashActive, setDamageFlashActive] = useState(false);
+  const seenHitsRef = useRef(new Set());
+
+  useEffect(() => {
+    for (const hit of recentHits) {
+      if (seenHitsRef.current.has(hit.id)) continue;
+
+      seenHitsRef.current.add(hit.id);
+
+      if (hit.attackerId === myId) {
+        setHitMarkerActive(true);
+        setTimeout(() => setHitMarkerActive(false), 120);
+      }
+
+      if (hit.victimId === myId) {
+        setDamageFlashActive(true);
+        setTimeout(() => setDamageFlashActive(false), 180);
+      }
+    }
+
+    if (seenHitsRef.current.size > 100) {
+      seenHitsRef.current = new Set(Array.from(seenHitsRef.current).slice(-50));
+    }
+  }, [recentHits, myId]);
+
   return (
     <div className="app-shell">
       <div className="game-shell">
@@ -60,6 +87,17 @@ export default function App() {
         <Scoreboard players={players} myId={myId} />
         <HealthPanel me={me} />
         <ControlsPanel />
+
+        {hitMarkerActive && (
+          <div className="hitmarker">
+            <div className="hitmarker-line hitmarker-line-a" />
+            <div className="hitmarker-line hitmarker-line-b" />
+            <div className="hitmarker-line hitmarker-line-c" />
+            <div className="hitmarker-line hitmarker-line-d" />
+          </div>
+        )}
+
+        {damageFlashActive && <div className="damage-flash" />}
 
         {!joined && <JoinOverlay connected={connected} onJoin={joinGame} />}
         {me && !me.alive && joined && <DeathOverlay />}

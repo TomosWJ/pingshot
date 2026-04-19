@@ -20,6 +20,21 @@ export function useCanvasRenderer({ canvasRef, playersRef, bulletsRef, myId }) {
       ctx.strokeRect(0, 0, WIDTH, HEIGHT);
 
       for (const bullet of bulletsRef.current) {
+        const trailLength = 14;
+        const speed = Math.hypot(bullet.vx || 0, bullet.vy || 0) || 1;
+        const dirX = (bullet.vx || 0) / speed;
+        const dirY = (bullet.vy || 0) / speed;
+
+        ctx.strokeStyle = "rgba(255, 140, 140, 0.45)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(bullet.x, bullet.y);
+        ctx.lineTo(
+          bullet.x - dirX * trailLength,
+          bullet.y - dirY * trailLength
+        );
+        ctx.stroke();
+
         ctx.fillStyle = "#ff6767";
         ctx.beginPath();
         ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);

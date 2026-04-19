@@ -2,7 +2,7 @@ const WebSocket = require("ws");
 const crypto = require("crypto");
 
 const PORT = 3001;
-const TICK_RATE = 20;
+const TICK_RATE = 15;
 
 const WORLD_WIDTH = 1000;
 const WORLD_HEIGHT = 700;
@@ -25,6 +25,7 @@ const wss = new WebSocket.Server({ port: PORT });
 const players = new Map();
 const bullets = [];
 const killFeed = [];
+const recentHits = [];
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -47,6 +48,8 @@ function broadcast(data) {
 }
 
 function makeSnapshot() {
+  const now = Date.now();
+
   return {
     type: "snapshot",
     players: Array.from(players.values()).map((p) => ({
@@ -64,8 +67,11 @@ function makeSnapshot() {
     bullets: bullets.map((b) => ({
       x: b.x,
       y: b.y,
+      vx: b.vx,
+      vy: b.vy,
     })),
     killFeed: killFeed.slice(-8),
+    recentHits: recentHits.filter((hit) => now - hit.time < 250),
   };
 }
 
@@ -201,6 +207,17 @@ setInterval(() => {
       if (distance < PLAYER_RADIUS + BULLET_RADIUS) {
         player.hp -= DAMAGE;
 
+        recentHits.push({
+          id: crypto.randomUUID(),
+          attackerId: bullet.ownerId,
+          victimId: player.id,
+          time: Date.now(),
+        });
+
+        if (recentHits.length > 40) {
+          recentHits.shift();
+        }
+
         const shooter = players.get(bullet.ownerId);
 
         if (player.hp <= 0) {
@@ -242,6 +259,10 @@ setInterval(() => {
     if (hitSomething) {
       continue;
     }
+  }
+
+  while (recentHits.length > 0 && now - recentHits[0].time > 300) {
+    recentHits.shift();
   }
 
   broadcast(makeSnapshot());

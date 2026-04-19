@@ -7,8 +7,8 @@ export function useGameSocket() {
   const bulletsRef = useRef([]);
 
   const [players, setPlayers] = useState([]);
-  const [bullets, setBullets] = useState([]);
   const [killFeed, setKillFeed] = useState([]);
+  const [recentHits, setRecentHits] = useState([]);
   const [myId, setMyId] = useState(null);
   const [connected, setConnected] = useState(false);
   const [joined, setJoined] = useState(false);
@@ -32,13 +32,14 @@ export function useGameSocket() {
         const nextPlayers = msg.players || [];
         const nextBullets = msg.bullets || [];
         const nextKillFeed = msg.killFeed || [];
+        const nextRecentHits = msg.recentHits || [];
 
         playersRef.current = nextPlayers;
         bulletsRef.current = nextBullets;
 
         setPlayers(nextPlayers);
-        setBullets(nextBullets);
         setKillFeed(nextKillFeed);
+        setRecentHits(nextRecentHits);
       }
     };
 
@@ -89,9 +90,9 @@ export function useGameSocket() {
   return {
     players,
     playersRef,
-    bullets,
     bulletsRef,
     killFeed,
+    recentHits,
     myId,
     me,
     connected,
