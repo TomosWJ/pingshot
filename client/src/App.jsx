@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const WIDTH = 1000;
 const HEIGHT = 700;
+const STORAGE_KEY = "pingshot_name";
 
 export default function App() {
   const canvasRef = useRef(null);
@@ -12,6 +13,10 @@ export default function App() {
   const [players, setPlayers] = useState([]);
   const [myId, setMyId] = useState(null);
   const [connected, setConnected] = useState(false);
+  const [joined, setJoined] = useState(false);
+  const [nameInput, setNameInput] = useState(
+    localStorage.getItem(STORAGE_KEY) || ""
+  );
 
   const inputRef = useRef({
     up: false,
@@ -28,7 +33,6 @@ export default function App() {
 
     socket.onopen = () => {
       setConnected(true);
-      socket.send(JSON.stringify({ type: "join", name: "Tomos" }));
     };
 
     socket.onmessage = (event) => {
@@ -47,6 +51,7 @@ export default function App() {
 
     socket.onclose = () => {
       setConnected(false);
+      setJoined(false);
     };
 
     return () => {
@@ -55,6 +60,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!joined) return;
+
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
       if (key === "w") inputRef.current.up = true;
@@ -90,9 +97,11 @@ export default function App() {
       window.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, []);
+  }, [joined]);
 
   useEffect(() => {
+    if (!joined) return;
+
     const handleMouseMove = (e) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -112,9 +121,11 @@ export default function App() {
 
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
-  }, [myId]);
+  }, [myId, joined]);
 
   useEffect(() => {
+    if (!joined) return;
+
     const interval = setInterval(() => {
       const socket = socketRef.current;
       if (!socket || socket.readyState !== WebSocket.OPEN) return;
@@ -128,12 +139,13 @@ export default function App() {
     }, 50);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [joined]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    if (!canvas) return;
 
+    const ctx = canvas.getContext("2d");
     let animationFrameId;
 
     const render = () => {
@@ -205,6 +217,29 @@ export default function App() {
   }, [players]);
 
   const hpPercent = me ? Math.max(0, Math.min(100, me.hp || 0)) : 0;
+
+  const handleJoin = (e) => {
+    e.preventDefault();
+
+    const trimmedName = nameInput.trim().slice(0, 16);
+    const finalName = trimmedName || "Player";
+
+    localStorage.setItem(STORAGE_KEY, finalName);
+
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(
+      JSON.stringify({
+        type: "join",
+        name: finalName,
+      })
+    );
+
+    setJoined(true);
+  };
+
+  const canJoin = connected && nameInput.trim().length > 0;
 
   return (
     <div
@@ -364,7 +399,106 @@ export default function App() {
           <div><strong>Shoot:</strong> Hold click</div>
         </div>
 
-        {me && !me.alive && (
+        {!joined && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "rgba(0,0,0,0.45)",
+              borderRadius: "14px",
+            }}
+          >
+            <form
+              onSubmit={handleJoin}
+              style={{
+                width: 360,
+                maxWidth: "90%",
+                background: "rgba(10,12,18,0.95)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "18px",
+                padding: "24px",
+                boxSizing: "border-box",
+                textAlign: "center",
+                backdropFilter: "blur(10px)",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 34,
+                  fontWeight: 800,
+                  marginBottom: 8,
+                }}
+              >
+                PingShot
+              </div>
+
+              <div
+                style={{
+                  fontSize: 15,
+                  opacity: 0.8,
+                  marginBottom: 18,
+                }}
+              >
+                Enter your name and jump in
+              </div>
+
+              <input
+                type="text"
+                value={nameInput}
+                onChange={(e) => setNameInput(e.target.value.slice(0, 16))}
+                placeholder="Your name"
+                maxLength={16}
+                autoFocus
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  background: "#151923",
+                  color: "white",
+                  fontSize: 16,
+                  outline: "none",
+                  boxSizing: "border-box",
+                  marginBottom: 14,
+                }}
+              />
+
+              <button
+                type="submit"
+                disabled={!canJoin}
+                style={{
+                  width: "100%",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border: "none",
+                  background: canJoin ? "#ffd166" : "#5c6472",
+                  color: "#111",
+                  fontWeight: 700,
+                  fontSize: 16,
+                  cursor: canJoin ? "pointer" : "not-allowed",
+                  transition: "transform 0.12s ease",
+                }}
+              >
+                Play
+              </button>
+
+              <div
+                style={{
+                  marginTop: 12,
+                  fontSize: 13,
+                  opacity: 0.65,
+                }}
+              >
+                {connected ? "Server ready" : "Connecting to server..."}
+              </div>
+            </form>
+          </div>
+        )}
+
+        {me && !me.alive && joined && (
           <div
             style={{
               position: "absolute",
