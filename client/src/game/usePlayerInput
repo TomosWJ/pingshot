@@ -1,0 +1,84 @@
+import { useEffect, useRef } from "react";
+import { HEIGHT, WIDTH } from "./constants";
+
+export function usePlayerInput({ joined, myId, playersRef, canvasRef, sendInput }) {
+  const inputRef = useRef({
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+    angle: 0,
+    shoot: false,
+  });
+
+  useEffect(() => {
+    if (!joined) return;
+
+    const handleKeyDown = (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "w") inputRef.current.up = true;
+      if (key === "s") inputRef.current.down = true;
+      if (key === "a") inputRef.current.left = true;
+      if (key === "d") inputRef.current.right = true;
+    };
+
+    const handleKeyUp = (e) => {
+      const key = e.key.toLowerCase();
+      if (key === "w") inputRef.current.up = false;
+      if (key === "s") inputRef.current.down = false;
+      if (key === "a") inputRef.current.left = false;
+      if (key === "d") inputRef.current.right = false;
+    };
+
+    const handleMouseDown = () => {
+      inputRef.current.shoot = true;
+    };
+
+    const handleMouseUp = () => {
+      inputRef.current.shoot = false;
+    };
+
+    const handleMouseMove = (e) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = ((e.clientX - rect.left) / rect.width) * WIDTH;
+      const mouseY = ((e.clientY - rect.top) / rect.height) * HEIGHT;
+
+      const me = playersRef.current.find((player) => player.id === myId);
+      if (!me) return;
+
+      const dx = mouseX - me.x;
+      const dy = mouseY - me.y;
+
+      inputRef.current.angle = Math.atan2(dy, dx);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("mousedown", handleMouseDown);
+    window.addEventListener("mouseup", handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("mousedown", handleMouseDown);
+      window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [joined, myId, playersRef, canvasRef]);
+
+  useEffect(() => {
+    if (!joined) return;
+
+    const interval = setInterval(() => {
+      sendInput(inputRef.current);
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [joined, sendInput]);
+
+  return inputRef;
+}

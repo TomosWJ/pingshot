@@ -1,0 +1,68 @@
+import { useEffect } from "react";
+import { HEIGHT, WIDTH } from "./constants";
+
+export function useCanvasRenderer({ canvasRef, playersRef, bulletsRef, myId }) {
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    let animationFrameId;
+
+    const render = () => {
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      ctx.fillStyle = "#0f1115";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      ctx.strokeStyle = "#2a2f3a";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 0, WIDTH, HEIGHT);
+
+      for (const bullet of bulletsRef.current) {
+        ctx.fillStyle = "#ff6767";
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const player of playersRef.current) {
+        if (!player.alive) continue;
+
+        ctx.fillStyle = player.color;
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        ctx.lineTo(
+          player.x + Math.cos(player.angle) * 24,
+          player.y + Math.sin(player.angle) * 24
+        );
+        ctx.stroke();
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "14px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(player.name, player.x, player.y - 24);
+
+        if (player.id === myId) {
+          ctx.strokeStyle = "#ffd166";
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, 19, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+
+    return () => cancelAnimationFrame(animationFrameId);
+  }, [canvasRef, playersRef, bulletsRef, myId]);
+}

@@ -1,0 +1,298 @@
+:root {
+  color-scheme: dark;
+  font-family: Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #090b0f;
+  color: white;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.game-shell {
+  position: relative;
+  width: min(1000px, 95vw);
+}
+
+.game-canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1px solid #2d3440;
+  border-radius: 14px;
+  background: #0f1115;
+}
+
+.panel {
+  position: absolute;
+  padding: 14px 16px;
+  background: rgba(8, 10, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+}
+
+.top-left-panel {
+  top: 16px;
+  left: 16px;
+  min-width: 210px;
+}
+
+.scoreboard-panel {
+  top: 16px;
+  right: 16px;
+  min-width: 220px;
+}
+
+.health-panel {
+  left: 16px;
+  bottom: 16px;
+  width: 260px;
+}
+
+.controls-panel {
+  right: 16px;
+  bottom: 16px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.panel-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.panel-title.large {
+  font-size: 24px;
+  margin-bottom: 6px;
+}
+
+.panel-text {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.score-row:last-child {
+  border-bottom: none;
+}
+
+.score-row.is-me {
+  color: #ffd166;
+}
+
+.score-row.is-dead {
+  opacity: 0.55;
+}
+
+.score-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.health-label {
+  margin-bottom: 8px;
+}
+
+.health-bar-shell {
+  width: 100%;
+  height: 14px;
+  background: #232833;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.health-bar-fill {
+  height: 100%;
+  transition: width 120ms linear;
+}
+
+.health-bar-fill.healthy {
+  background: #58d68d;
+}
+
+.health-bar-fill.low {
+  background: #ff6b6b;
+}
+
+.health-value {
+  margin-top: 8px;
+}
+
+.killfeed {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.killfeed-entry {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(8, 10, 14, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  animation: killfeedIn 220ms ease;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.killfeed-entry.mine {
+  background: rgba(255, 209, 102, 0.18);
+  border-color: rgba(255, 209, 102, 0.45);
+}
+
+.killfeed-entry.killed-me {
+  background: rgba(255, 90, 90, 0.18);
+  border-color: rgba(255, 90, 90, 0.4);
+}
+
+.mine-text {
+  color: #ffd166;
+}
+
+.death-text {
+  color: #ff8b8b;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+}
+
+.fullscreen-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.death-overlay {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.menu-card,
+.death-card {
+  background: rgba(10, 12, 18, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+}
+
+.menu-card {
+  width: 360px;
+  max-width: 90%;
+  padding: 24px;
+}
+
+.death-card {
+  padding: 24px 30px;
+}
+
+.menu-title,
+.death-title {
+  font-weight: 800;
+}
+
+.menu-title {
+  font-size: 34px;
+  margin-bottom: 8px;
+}
+
+.death-title {
+  font-size: 34px;
+  margin-bottom: 8px;
+}
+
+.menu-subtitle,
+.death-subtitle,
+.menu-status {
+  font-size: 15px;
+  opacity: 0.8;
+}
+
+.menu-subtitle {
+  margin-bottom: 18px;
+}
+
+.menu-status {
+  margin-top: 12px;
+  font-size: 13px;
+  opacity: 0.65;
+}
+
+.menu-input {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #151923;
+  color: white;
+  font-size: 16px;
+  outline: none;
+  margin-bottom: 14px;
+}
+
+.menu-button {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: none;
+  background: #ffd166;
+  color: #111;
+  font-weight: 700;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.menu-button:disabled {
+  background: #5c6472;
+  cursor: not-allowed;
+}
+
+@keyframes killfeedIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

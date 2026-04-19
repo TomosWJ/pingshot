@@ -1,0 +1,102 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { STORAGE_KEY } from "./constants";
+
+export function useGameSocket() {
+  const socketRef = useRef(null);
+  const playersRef = useRef([]);
+  const bulletsRef = useRef([]);
+
+  const [players, setPlayers] = useState([]);
+  const [bullets, setBullets] = useState([]);
+  const [killFeed, setKillFeed] = useState([]);
+  const [myId, setMyId] = useState(null);
+  const [connected, setConnected] = useState(false);
+  const [joined, setJoined] = useState(false);
+
+  useEffect(() => {
+    const socket = new WebSocket("ws://localhost:3001");
+    socketRef.current = socket;
+
+    socket.onopen = () => {
+      setConnected(true);
+    };
+
+    socket.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === "welcome") {
+        setMyId(msg.id);
+      }
+
+      if (msg.type === "snapshot") {
+        const nextPlayers = msg.players || [];
+        const nextBullets = msg.bullets || [];
+        const nextKillFeed = msg.killFeed || [];
+
+        playersRef.current = nextPlayers;
+        bulletsRef.current = nextBullets;
+
+        setPlayers(nextPlayers);
+        setBullets(nextBullets);
+        setKillFeed(nextKillFeed);
+      }
+    };
+
+    socket.onclose = () => {
+      setConnected(false);
+      setJoined(false);
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  const joinGame = (name) => {
+    const finalName = name.trim().slice(0, 16) || "Player";
+    localStorage.setItem(STORAGE_KEY, finalName);
+
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(
+      JSON.stringify({
+        type: "join",
+        name: finalName,
+      })
+    );
+
+    setJoined(true);
+  };
+
+  const sendInput = (input) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(
+      JSON.stringify({
+        type: "input",
+        ...input,
+      })
+    );
+  };
+
+  const me = useMemo(
+    () => players.find((player) => player.id === myId) || null,
+    [players, myId]
+  );
+
+  return {
+    players,
+    playersRef,
+    bullets,
+    bulletsRef,
+    killFeed,
+    myId,
+    me,
+    connected,
+    joined,
+    joinGame,
+    sendInput,
+  };
+}

@@ -24,6 +24,7 @@ const wss = new WebSocket.Server({ port: PORT });
 
 const players = new Map();
 const bullets = [];
+const killFeed = [];
 
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
@@ -38,8 +39,10 @@ function randomSpawn() {
 
 function broadcast(data) {
   const msg = JSON.stringify(data);
-  for (const c of wss.clients) {
-    if (c.readyState === WebSocket.OPEN) c.send(msg);
+  for (const client of wss.clients) {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(msg);
+    }
   }
 }
 
@@ -62,6 +65,7 @@ function makeSnapshot() {
       x: b.x,
       y: b.y,
     })),
+    killFeed: killFeed.slice(-8),
   };
 }
 
@@ -76,10 +80,16 @@ wss.on("connection", (socket) => {
     x: spawn.x,
     y: spawn.y,
     angle: 0,
-    color: `hsl(${Math.random() * 360},70%,60%)`,
-    input: {},
+    color: `hsl(${Math.floor(Math.random() * 360)}, 70%, 60%)`,
+    input: {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+      angle: 0,
+      shoot: false,
+    },
     lastShot: 0,
-
     hp: MAX_HP,
     alive: true,
     kills: 0,
@@ -88,25 +98,34 @@ wss.on("connection", (socket) => {
 
   players.set(id, player);
 
-  console.log("Player connected:", id);
+  console.log(`Player connected: ${id}`);
 
   socket.send(JSON.stringify({ type: "welcome", id }));
 
   socket.on("message", (raw) => {
-    const msg = JSON.parse(raw);
+    try {
+      const msg = JSON.parse(raw.toString());
 
-    if (msg.type === "join") {
-      player.name = msg.name || "Player";
-    }
+      if (msg.type === "join") {
+        player.name = String(msg.name || "Player").slice(0, 16);
+      }
 
-    if (msg.type === "input") {
-      player.input = msg;
+      if (msg.type === "input") {
+        player.input.up = !!msg.up;
+        player.input.down = !!msg.down;
+        player.input.left = !!msg.left;
+        player.input.right = !!msg.right;
+        player.input.angle = Number(msg.angle) || 0;
+        player.input.shoot = !!msg.shoot;
+      }
+    } catch (err) {
+      console.error("Bad message:", err);
     }
   });
 
   socket.on("close", () => {
     players.delete(id);
-    console.log("Disconnected:", id);
+    console.log(`Disconnected: ${id}`);
   });
 });
 
@@ -114,92 +133,118 @@ setInterval(() => {
   const dt = 1 / TICK_RATE;
   const now = Date.now();
 
-  // MOVE + SHOOT
-  for (const p of players.values()) {
-    if (!p.alive) continue;
+  for (const player of players.values()) {
+    if (!player.alive) continue;
 
-    let dx = 0,
-      dy = 0;
+    let moveX = 0;
+    let moveY = 0;
 
-    if (p.input.up) dy -= 1;
-    if (p.input.down) dy += 1;
-    if (p.input.left) dx -= 1;
-    if (p.input.right) dx += 1;
+    if (player.input.up) moveY -= 1;
+    if (player.input.down) moveY += 1;
+    if (player.input.left) moveX -= 1;
+    if (player.input.right) moveX += 1;
 
-    const len = Math.hypot(dx, dy);
-    if (len > 0) {
-      dx /= len;
-      dy /= len;
+    const length = Math.hypot(moveX, moveY);
+    if (length > 0) {
+      moveX /= length;
+      moveY /= length;
     }
 
-    p.x += dx * PLAYER_SPEED * dt;
-    p.y += dy * PLAYER_SPEED * dt;
+    player.x += moveX * PLAYER_SPEED * dt;
+    player.y += moveY * PLAYER_SPEED * dt;
 
-    p.x = clamp(p.x, 20, WORLD_WIDTH - 20);
-    p.y = clamp(p.y, 20, WORLD_HEIGHT - 20);
+    player.x = clamp(player.x, 20, WORLD_WIDTH - 20);
+    player.y = clamp(player.y, 20, WORLD_HEIGHT - 20);
 
-    p.angle = p.input.angle || 0;
+    player.angle = player.input.angle || 0;
 
-    if (p.input.shoot && now - p.lastShot > FIRE_COOLDOWN) {
-      p.lastShot = now;
+    if (player.input.shoot && now - player.lastShot >= FIRE_COOLDOWN) {
+      player.lastShot = now;
 
       bullets.push({
-        owner: p.id,
-        x: p.x,
-        y: p.y,
-        vx: Math.cos(p.angle) * BULLET_SPEED,
-        vy: Math.sin(p.angle) * BULLET_SPEED,
+        ownerId: player.id,
+        x: player.x,
+        y: player.y,
+        vx: Math.cos(player.angle) * BULLET_SPEED,
+        vy: Math.sin(player.angle) * BULLET_SPEED,
         life: BULLET_LIFE,
       });
     }
   }
 
-  // BULLETS
   for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i];
+    const bullet = bullets[i];
 
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    b.life -= dt;
+    bullet.x += bullet.vx * dt;
+    bullet.y += bullet.vy * dt;
+    bullet.life -= dt;
 
-    if (b.life <= 0) {
+    const outOfBounds =
+      bullet.x < 0 ||
+      bullet.x > WORLD_WIDTH ||
+      bullet.y < 0 ||
+      bullet.y > WORLD_HEIGHT;
+
+    if (bullet.life <= 0 || outOfBounds) {
       bullets.splice(i, 1);
       continue;
     }
 
-    // HIT DETECTION
-    for (const p of players.values()) {
-      if (!p.alive || p.id === b.owner) continue;
+    let hitSomething = false;
 
-      const dist = Math.hypot(p.x - b.x, p.y - b.y);
+    for (const player of players.values()) {
+      if (!player.alive) continue;
+      if (player.id === bullet.ownerId) continue;
 
-      if (dist < PLAYER_RADIUS + BULLET_RADIUS) {
-        p.hp -= DAMAGE;
+      const distance = Math.hypot(player.x - bullet.x, player.y - bullet.y);
 
-        const shooter = players.get(b.owner);
+      if (distance < PLAYER_RADIUS + BULLET_RADIUS) {
+        player.hp -= DAMAGE;
 
-        if (p.hp <= 0) {
-          p.alive = false;
-          p.deaths++;
+        const shooter = players.get(bullet.ownerId);
 
-          if (shooter) shooter.kills++;
+        if (player.hp <= 0) {
+          player.alive = false;
+          player.deaths += 1;
+
+          if (shooter) {
+            shooter.kills += 1;
+
+            killFeed.push({
+              id: crypto.randomUUID(),
+              killerId: shooter.id,
+              killerName: shooter.name,
+              victimId: player.id,
+              victimName: player.name,
+              time: Date.now(),
+            });
+
+            if (killFeed.length > 20) {
+              killFeed.shift();
+            }
+          }
 
           setTimeout(() => {
             const spawn = randomSpawn();
-            p.x = spawn.x;
-            p.y = spawn.y;
-            p.hp = MAX_HP;
-            p.alive = true;
+            player.x = spawn.x;
+            player.y = spawn.y;
+            player.hp = MAX_HP;
+            player.alive = true;
           }, RESPAWN_TIME);
         }
 
         bullets.splice(i, 1);
+        hitSomething = true;
         break;
       }
+    }
+
+    if (hitSomething) {
+      continue;
     }
   }
 
   broadcast(makeSnapshot());
 }, 1000 / TICK_RATE);
 
-console.log("Server running on 3001");
+console.log(`Server running on ws://localhost:${PORT}`);
