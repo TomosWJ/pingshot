@@ -142,6 +142,10 @@ body {
   background: #ff6b6b;
 }
 
+.health-bar-fill.ammo {
+  background: #4a9eff;
+}
+
 .health-value {
   margin-top: 8px;
 }

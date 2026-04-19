@@ -20,6 +20,10 @@ const MAX_HP = 100;
 const DAMAGE = 25;
 const RESPAWN_TIME = 1000;
 
+const MAX_AMMO = 60;
+const AMMO_PER_SHOT = 1;
+const AMMO_REGEN_RATE = 15; // ammo per second
+
 const wss = new WebSocket.Server({ port: PORT });
 
 const players = new Map();
@@ -60,6 +64,7 @@ function makeSnapshot() {
       angle: p.angle,
       color: p.color,
       hp: p.hp,
+      ammo: p.ammo,
       alive: p.alive,
       kills: p.kills,
       deaths: p.deaths,
@@ -97,6 +102,7 @@ wss.on("connection", (socket) => {
     },
     lastShot: 0,
     hp: MAX_HP,
+    ammo: MAX_AMMO,
     alive: true,
     kills: 0,
     deaths: 0,
@@ -164,8 +170,14 @@ setInterval(() => {
 
     player.angle = player.input.angle || 0;
 
-    if (player.input.shoot && now - player.lastShot >= FIRE_COOLDOWN) {
+    // Regenerate ammo
+    if (player.ammo < MAX_AMMO) {
+      player.ammo = Math.min(MAX_AMMO, player.ammo + AMMO_REGEN_RATE * dt);
+    }
+
+    if (player.input.shoot && now - player.lastShot >= FIRE_COOLDOWN && player.ammo >= AMMO_PER_SHOT) {
       player.lastShot = now;
+      player.ammo -= AMMO_PER_SHOT;
 
       bullets.push({
         ownerId: player.id,
@@ -246,6 +258,7 @@ setInterval(() => {
             player.x = spawn.x;
             player.y = spawn.y;
             player.hp = MAX_HP;
+            player.ammo = MAX_AMMO;
             player.alive = true;
           }, RESPAWN_TIME);
         }
